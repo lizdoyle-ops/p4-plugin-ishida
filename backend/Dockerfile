@@ -19,8 +19,10 @@ COPY data/ ./data/
 RUN cd backend && npm run build
 
 ENV NODE_ENV=production
-ENV PORT=4000
-EXPOSE 4000
+# Must match the port Render injects, otherwise its edge advertises one port
+# while the app listens on another and routing fails intermittently.
+ENV PORT=10000
+EXPOSE 10000
 
 WORKDIR /app/backend
 CMD ["node", "dist/index.js"]

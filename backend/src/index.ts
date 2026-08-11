@@ -58,6 +58,7 @@ app.use(
   },
 );
 
+// Render injects PORT (10000 by default). Locally, .env sets 4000.
 const port = Number(process.env.PORT ?? 4000);
 
 seedFromCsv();
@@ -66,6 +67,9 @@ if (!process.env.API_KEY) {
   console.warn('[warn] API_KEY is not set — every /api request will return 500.');
 }
 
-app.listen(port, () => {
-  console.log(`[p4-backend] listening on http://localhost:${port}`);
+// Bind 0.0.0.0 explicitly: Render routes to the container's external interface,
+// and the port must be the one Render injects via PORT — anything else and its
+// edge intermittently fails to find a listener.
+app.listen(port, '0.0.0.0', () => {
+  console.log(`[p4-backend] listening on 0.0.0.0:${port}`);
 });
