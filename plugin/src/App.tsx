@@ -6,6 +6,7 @@ import TicketFields from './components/TicketFields';
 import { FIELD_SETS, detectFieldSet, type FieldSetId } from './fieldSets';
 import { useFrontContext } from './hooks/useFrontContext';
 import { useSerials, type SerialSource } from './hooks/useSerials';
+import { useTicketStatus } from './hooks/useTicketStatus';
 
 /** Serials offered as one-click buttons when running outside Front. */
 const DEV_SERIALS = ['560020728', '560020727', '560020450', '560018221', '560019430', '999999999'];
@@ -43,6 +44,13 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0);
   const [overrideSetId, setOverrideSetId] = useState<FieldSetId | null>(null);
   const [tab, setTab] = useState<'fields' | 'objects'>('fields');
+
+  const ticketStatus = useTicketStatus(
+    front.context,
+    front.statusId,
+    front.statusCategory,
+    front.status,
+  );
 
   const primarySerial = serials[0] ?? null;
 
@@ -342,6 +350,7 @@ export default function App() {
             editedFields={edits}
             onSave={saveField}
             conversationId={front.conversationId}
+            ticketStatus={ticketStatus}
           />
         </>
       )}

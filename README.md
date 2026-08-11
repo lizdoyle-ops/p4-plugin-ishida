@@ -323,6 +323,23 @@ just will not appear in Front's own field UI until the field exists.
 Names must match `frontName` in `plugin/src/fieldSets.ts` **exactly** — that string is
 how values are looked up. If you name a field differently in Front, change it there too.
 
+### Complaint Status mirrors the Front ticket status
+
+`Complaint Status` is not a custom field. It reads the conversation's ticket status
+straight from Front and is deliberately **read-only** — Front owns that value, and a
+second editable copy could only ever disagree with it. Change the status using Front's own
+control and the panel follows.
+
+The pill is coloured by Front's status category: green for resolved, amber for waiting,
+blue for open.
+
+The SDK exposes `statusId` and `statusCategory` but not the status *name*, so the name is
+resolved via `listTicketStatuses()` and matched by id (cached, since it only changes in
+Settings). If that lookup fails, or the inbox has ticketing disabled and there is no
+`statusId`, it falls back to the category — so the row shows "Open" rather than going
+blank. Both demo inboxes have ticketing enabled (`status_id` is populated), so the lookup
+has something to resolve.
+
 ### Editing fields from the panel
 
 Every field row is editable: click the value, type, press Enter or click away. Escape

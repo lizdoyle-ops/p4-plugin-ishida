@@ -25,6 +25,11 @@ export interface FieldDef {
   long?: boolean;
   /** Defaults to 'text'. */
   kind?: FieldKind;
+  /**
+   * Value comes from Front itself rather than a custom field, and is read-only —
+   * Front owns it, so editing it here would only drift out of sync.
+   */
+  derived?: 'ticketStatus';
 }
 
 export interface FieldSet {
@@ -39,15 +44,15 @@ export const COMPLAINTS: FieldSet = {
   fields: [
     { frontName: 'Complaint Category', group: 'Classification' },
     { frontName: 'Complaint Type', group: 'Classification' },
-    { frontName: 'Complaint Status', group: 'Classification' },
-    { frontName: 'Commercial Impact', group: 'Classification' },
+    // Mirrors the conversation's ticket status. Front is the owner of this one,
+    // so the panel reports it rather than keeping a second copy that can drift.
+    { frontName: 'Complaint Status', group: 'Classification', derived: 'ticketStatus' },
     { frontName: 'Serial Number(s)', group: 'Machine' },
     { frontName: 'Machine(s)', group: 'Machine' },
     // Country and LN reference are deliberately not here — both already show on
     // the machine card in section 2, and repeating them made the list longer
     // without telling the agent anything new.
     { frontName: 'Problem Statement', group: 'Detail', long: true },
-    { frontName: 'Proposed Solution', group: 'Detail', long: true },
     { frontName: 'Latest Update', group: 'Detail', long: true },
     { frontName: 'Final Resolution', group: 'Detail', long: true },
   ],

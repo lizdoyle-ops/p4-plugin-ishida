@@ -26,6 +26,16 @@ interface Props {
   onSave: (name: string, value: unknown) => Promise<void>;
   /** Null outside a conversation — editing is disabled without somewhere to save. */
   conversationId: string | null;
+  /** Live ticket status from Front, for fields marked derived: 'ticketStatus'. */
+  ticketStatus: { label: string | null; category: string | null };
+}
+
+/** Colour the status pill by Front's own status category. */
+function statusPillClass(category: string | null): string {
+  if (category === 'resolved') return 'pill-green';
+  if (category === 'waiting') return 'pill-amber';
+  if (category === 'open') return 'pill-blue';
+  return 'pill-grey';
 }
 
 /** Render any custom-field type as something readable. */
@@ -85,6 +95,35 @@ function toInputValue(def: FieldDef, value: unknown): string {
 }
 
 type Status = 'idle' | 'saving' | 'localOnly' | 'error';
+
+/**
+ * A field Front owns. Read-only by design: the agent changes the ticket status
+ * using Front's own control, and this reflects it — a second editable copy would
+ * only be able to disagree with the real thing.
+ */
+function DerivedStatusRow({
+  def,
+  ticketStatus,
+}: {
+  def: FieldDef;
+  ticketStatus: { label: string | null; category: string | null };
+}) {
+  return (
+    <div className="field">
+      <div className="field-label">{def.frontName}</div>
+      <div className="field-value">
+        {ticketStatus.label ? (
+          <span className={`pill ${statusPillClass(ticketStatus.category)}`}>
+            {ticketStatus.label}
+          </span>
+        ) : (
+          <span className="field-empty">—</span>
+        )}
+        <span className="field-note">from Front</span>
+      </div>
+    </div>
+  );
+}
 
 function FieldRow({
   def,
@@ -242,6 +281,7 @@ export default function TicketFields({
   editedFields,
   onSave,
   conversationId,
+  ticketStatus,
 }: Props) {
   const byName = new Map<string, CustomFieldValue>();
   for (const field of customFields) {
@@ -262,6 +302,7 @@ export default function TicketFields({
   });
 
   const filledCount = fieldSet.fields.filter((def) => {
+    if (def.derived === 'ticketStatus') return ticketStatus.label !== null;
     const { frontValue, snapshotValue, editedValue } = resolve(def);
     return editedValue !== undefined || frontValue !== null || snapshotValue !== null;
   }).length;
@@ -279,6 +320,11 @@ export default function TicketFields({
         <div key={group.name}>
           <div className="group-label">{group.name}</div>
           {group.fields.map((def) => {
+            if (def.derived === 'ticketStatus') {
+              return (
+                <DerivedStatusRow key={def.frontName} def={def} ticketStatus={ticketStatus} />
+              );
+            }
             const { frontValue, snapshotValue, editedValue } = resolve(def);
             return (
               <FieldRow

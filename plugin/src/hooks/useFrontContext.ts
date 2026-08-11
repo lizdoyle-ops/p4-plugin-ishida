@@ -39,6 +39,12 @@ export interface FrontState {
   subject: string | null;
   inboxes: InboxRef[];
   customFields: CustomFieldValue[];
+  /** Ticket status id. Only set when ticketing is enabled on the inbox. */
+  statusId: string | null;
+  /** 'open' | 'waiting' | 'resolved' when ticketing is enabled. */
+  statusCategory: string | null;
+  /** Conversation status: open | archived | trashed | spam. Always present. */
+  status: string | null;
   /** Raw SDK context, retained for listMessages() and createDraft(). */
   context: any | null;
 }
@@ -49,6 +55,9 @@ const INITIAL: FrontState = {
   subject: null,
   inboxes: [],
   customFields: [],
+  statusId: null,
+  statusCategory: null,
+  status: null,
   context: null,
 };
 
@@ -60,7 +69,15 @@ export function useFrontContext(): FrontState {
 
     const devModeTimer = setTimeout(() => {
       if (!handshakeSeen) {
-        setState({ ...INITIAL, kind: 'dev', conversationId: DEV_CONVERSATION_ID });
+        setState({
+          ...INITIAL,
+          kind: 'dev',
+          conversationId: DEV_CONVERSATION_ID,
+          // Stand-in so the status row renders outside Front. Inside Front this
+          // comes from the conversation and is never faked.
+          statusCategory: 'open',
+          status: 'open',
+        });
       }
     }, 1500);
 
@@ -83,6 +100,9 @@ export function useFrontContext(): FrontState {
             type: String(field.type ?? 'unknown'),
             value: field.value,
           })),
+          statusId: conversation.statusId ? String(conversation.statusId) : null,
+          statusCategory: conversation.statusCategory ? String(conversation.statusCategory) : null,
+          status: conversation.status ? String(conversation.status) : null,
           context,
         });
         return;
