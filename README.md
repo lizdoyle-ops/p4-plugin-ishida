@@ -340,6 +340,28 @@ Settings). If that lookup fails, or the inbox has ticketing disabled and there i
 blank. Both demo inboxes have ticketing enabled (`status_id` is populated), so the lookup
 has something to resolve.
 
+### Where each value came from
+
+The panel never shows a value without saying where it came from. Precedence,
+highest first:
+
+| Source | Marker |
+|---|---|
+| A manual edit made in the panel | **Edited** badge |
+| The conversation's own Front custom field | *from Front* |
+| The playbook's backend snapshot | **AI-filled** badge |
+| The conversation's ticket status | *from Front*, read-only |
+| Nothing set | `—` |
+
+*from Front* covers anything read back from `customFieldAttributes` — whether a
+person, a rule or the playbook put it there, that value now lives in Front and the
+panel is reporting rather than holding it. **AI-filled** is the opposite case: the
+playbook resolved it, but it is not in Front, usually because the custom field does
+not exist there yet.
+
+The marker sits beside the value on normal rows, and beside the label on the long
+free-text fields, where a trailing marker would be lost at the end of a paragraph.
+
 ### Editing fields from the panel
 
 Every field row is editable: click the value, type, press Enter or click away. Escape

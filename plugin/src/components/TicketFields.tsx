@@ -152,6 +152,9 @@ function FieldRow({
   // Edits win, then Front's own value, then whatever the playbook resolved.
   const display = hasEdit ? editedText : (frontValue ?? snapshotValue);
   const isAiFilled = !hasEdit && frontValue === null && snapshotValue !== null;
+  // Read back from the conversation's own custom fields — whether a person, a
+  // rule or the playbook put it there, Front is where this value now lives.
+  const isFromFront = !hasEdit && frontValue !== null;
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -239,9 +242,28 @@ function FieldRow({
     />
   );
 
+  // Where the value came from. Sits beside the label on long fields, where the
+  // value is a paragraph in a block and a trailing marker would get lost.
+  const provenance = editing ? null : (
+    <>
+      {hasEdit && status !== 'saving' && <span className="edit-badge">Edited</span>}
+      {isAiFilled && <span className="ai-badge">AI-filled</span>}
+      {note ? (
+        <span className={status === 'error' ? 'field-note field-note-error' : 'field-note'}>
+          {note}
+        </span>
+      ) : (
+        isFromFront && <span className="field-note">from Front</span>
+      )}
+    </>
+  );
+
   return (
     <div className={def.long ? 'field field-long' : 'field'}>
-      <div className="field-label">{def.frontName}</div>
+      <div className="field-label">
+        {def.frontName}
+        {def.long && provenance}
+      </div>
       <div className="field-value">
         {editing ? (
           editor
@@ -262,13 +284,7 @@ function FieldRow({
             {status === 'saving' ? 'Saving…' : (display ?? '—')}
           </span>
         )}
-        {!editing && hasEdit && status !== 'saving' && <span className="edit-badge">Edited</span>}
-        {!editing && isAiFilled && <span className="ai-badge">AI-filled</span>}
-        {note && !editing && (
-          <span className={status === 'error' ? 'field-note field-note-error' : 'field-note'}>
-            {note}
-          </span>
-        )}
+        {!def.long && provenance}
       </div>
     </div>
   );
