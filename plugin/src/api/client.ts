@@ -11,6 +11,7 @@
 import {
   SerialNotFoundError,
   type CustomerObjects,
+  type EditResponse,
   type Machine,
   type TicketSnapshot,
 } from './types';
@@ -85,6 +86,36 @@ export async function fetchSnapshot(conversationId: string): Promise<TicketSnaps
   } catch {
     return null;
   }
+}
+
+/** Manual edits made in the panel. Returns an empty map rather than 404. */
+export async function fetchEdits(conversationId: string): Promise<Record<string, unknown>> {
+  try {
+    const result = await request<TicketSnapshot>(
+      `/api/tickets/${encodeURIComponent(conversationId)}/fields`,
+    );
+    return result.fields ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Save one edited field. Pass null to clear it.
+ *
+ * The backend stores the edit and then tries to write it through to Front's own
+ * custom fields; `front` reports what actually landed there. Storing always
+ * succeeds, so a rejected write-through still leaves the value on screen.
+ */
+export function saveFieldEdit(
+  conversationId: string,
+  name: string,
+  value: unknown,
+): Promise<EditResponse> {
+  return request<EditResponse>(`/api/tickets/${encodeURIComponent(conversationId)}/fields`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields: { [name]: value } }),
+  });
 }
 
 export { BASE_URL };

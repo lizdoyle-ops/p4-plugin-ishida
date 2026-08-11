@@ -76,6 +76,61 @@ body {
   white-space: nowrap;
 }
 
+/* Tab bar. Sits flush with the header's bottom border so the active tab
+   visually connects to the content below it. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin: 10px -12px -9px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-count {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tab[aria-selected='true'] .tab-count {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.inline-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* Segmented field-set toggle. */
 .segmented {
   display: inline-flex;
@@ -190,6 +245,56 @@ body {
 
 .field-empty {
   color: var(--text-faint);
+}
+
+/* Click target for inline editing. Kept subtle until hover so a panel of 16
+   fields does not read as a form. */
+.field-display {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+}
+
+.field-editable {
+  cursor: text;
+}
+
+.field-editable:hover {
+  background: var(--bg-sunken);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.field-editable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.field-note {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.field-note-error {
+  color: var(--amber);
+}
+
+.edit-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+  white-space: nowrap;
 }
 
 .ai-badge {

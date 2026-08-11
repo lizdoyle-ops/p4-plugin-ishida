@@ -70,6 +70,18 @@ export interface TicketSnapshot {
   updated_at: string;
 }
 
+/** Result of trying to push an edit through to Front's own custom fields. */
+export interface FrontWriteResult {
+  attempted: boolean;
+  written: string[];
+  failed: Array<{ name: string; reason: string }>;
+  error?: string;
+}
+
+export interface EditResponse extends TicketSnapshot {
+  front: FrontWriteResult;
+}
+
 /** Distinguishes "serial genuinely absent from the ERP" from "request failed". */
 export class SerialNotFoundError extends Error {
   constructor(public readonly serial: string) {

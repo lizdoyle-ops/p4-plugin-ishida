@@ -122,6 +122,14 @@ db.exec(`
     fields_json     TEXT NOT NULL,
     updated_at      TEXT NOT NULL
   );
+
+  -- Manual edits made by an agent in the plugin. Kept apart from snapshots so
+  -- the panel can tell "the AI filled this" from "a person changed this".
+  CREATE TABLE IF NOT EXISTS ticket_edits (
+    conversation_id TEXT PRIMARY KEY,
+    fields_json     TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+  );
 `);
 
 /** Wipe and reload the machines table from the CSV. Called once at boot. */
@@ -207,6 +215,43 @@ export function saveSnapshot(conversationId: string, fields: Record<string, unkn
   ).run(conversationId, JSON.stringify(fields), updated_at);
 
   return { conversation_id: conversationId, fields, updated_at };
+}
+
+/** Merge new edits over whatever is already stored for this conversation. */
+export function saveEdits(
+  conversationId: string,
+  fields: Record<string, unknown>,
+): TicketSnapshot {
+  const existing = getEdits(conversationId);
+  const merged = { ...(existing?.fields ?? {}), ...fields };
+
+  // An explicit null clears a field rather than storing a null value.
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === null) delete merged[key];
+  }
+
+  const updated_at = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO ticket_edits (conversation_id, fields_json, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(conversation_id) DO UPDATE SET
+       fields_json = excluded.fields_json,
+       updated_at  = excluded.updated_at`,
+  ).run(conversationId, JSON.stringify(merged), updated_at);
+
+  return { conversation_id: conversationId, fields: merged, updated_at };
+}
+
+export function getEdits(conversationId: string): TicketSnapshot | null {
+  const row = db
+    .prepare('SELECT * FROM ticket_edits WHERE conversation_id = ?')
+    .get(conversationId) as { fields_json: string; updated_at: string } | undefined;
+  if (!row) return null;
+  return {
+    conversation_id: conversationId,
+    fields: JSON.parse(row.fields_json) as Record<string, unknown>,
+    updated_at: row.updated_at,
+  };
 }
 
 export function getSnapshot(conversationId: string): TicketSnapshot | null {

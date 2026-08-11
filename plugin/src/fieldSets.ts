@@ -13,6 +13,9 @@
 
 export type FieldSetId = 'complaints' | 'techSupport';
 
+/** Drives which input the panel shows when a field is edited. */
+export type FieldKind = 'text' | 'boolean' | 'date' | 'number';
+
 export interface FieldDef {
   /** Exact Front custom field name. */
   frontName: string;
@@ -20,6 +23,8 @@ export interface FieldDef {
   group: string;
   /** Renders in a full-width block instead of a label/value row. */
   long?: boolean;
+  /** Defaults to 'text'. */
+  kind?: FieldKind;
 }
 
 export interface FieldSet {
@@ -36,12 +41,11 @@ export const COMPLAINTS: FieldSet = {
     { frontName: 'Complaint Type', group: 'Classification' },
     { frontName: 'Complaint Status', group: 'Classification' },
     { frontName: 'Commercial Impact', group: 'Classification' },
-    { frontName: 'Which department(s)', group: 'Ownership' },
-    { frontName: 'Country', group: 'Ownership' },
-    { frontName: 'Next Update', group: 'Ownership' },
     { frontName: 'Serial Number(s)', group: 'Machine' },
     { frontName: 'Machine(s)', group: 'Machine' },
-    { frontName: 'LN Reference', group: 'Machine' },
+    // Country and LN reference are deliberately not here — both already show on
+    // the machine card in section 2, and repeating them made the list longer
+    // without telling the agent anything new.
     { frontName: 'Problem Statement', group: 'Detail', long: true },
     { frontName: 'Proposed Solution', group: 'Detail', long: true },
     { frontName: 'Latest Update', group: 'Detail', long: true },
@@ -56,15 +60,15 @@ export const TECH_SUPPORT: FieldSet = {
     { frontName: 'Serial Number(s)', group: 'Machine' },
     { frontName: 'Machine(s)', group: 'Machine' },
     { frontName: 'Service Contract', group: 'Machine' },
-    { frontName: 'Warranty Active?', group: 'Machine' },
+    { frontName: 'Warranty Active?', group: 'Machine', kind: 'boolean' },
     { frontName: 'Request Type', group: 'Machine' },
-    { frontName: 'Date of SightCall Intervention', group: 'SightCall' },
-    { frontName: 'SightCall Completed', group: 'SightCall' },
-    { frontName: 'Did SightCall Resolve the ticket?', group: 'SightCall' },
+    { frontName: 'Date of SightCall Intervention', group: 'SightCall', kind: 'date' },
+    { frontName: 'SightCall Completed', group: 'SightCall', kind: 'boolean' },
+    { frontName: 'Did SightCall Resolve the ticket?', group: 'SightCall', kind: 'boolean' },
     { frontName: 'Reason SightCall did not resolve', group: 'SightCall', long: true },
-    { frontName: 'Machine Breakdown?', group: 'Effort' },
-    { frontName: 'Callback Required', group: 'Effort' },
-    { frontName: 'No. of Engineer Visits', group: 'Effort' },
+    { frontName: 'Machine Breakdown?', group: 'Effort', kind: 'boolean' },
+    { frontName: 'Callback Required', group: 'Effort', kind: 'boolean' },
+    { frontName: 'No. of Engineer Visits', group: 'Effort', kind: 'number' },
     { frontName: 'Total time spent', group: 'Effort' },
     { frontName: 'Time spent last update', group: 'Effort' },
     { frontName: 'Issue', group: 'Detail', long: true },

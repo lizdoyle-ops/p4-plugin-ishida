@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchMachine, fetchSnapshot } from './api/client';
+import { fetchEdits, fetchMachine, fetchSnapshot, saveFieldEdit } from './api/client';
 import { SerialNotFoundError, type Machine, type TicketSnapshot } from './api/types';
 import AssociatedObjects from './components/AssociatedObjects';
 import TicketFields from './components/TicketFields';
@@ -35,11 +35,14 @@ export default function App() {
 
   const [machine, setMachine] = useState<Machine | null>(null);
   const [snapshot, setSnapshot] = useState<TicketSnapshot | null>(null);
+  const [edits, setEdits] = useState<Record<string, unknown>>({});
+  const [writeNotice, setWriteNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFoundSerial, setNotFoundSerial] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [overrideSetId, setOverrideSetId] = useState<FieldSetId | null>(null);
+  const [tab, setTab] = useState<'fields' | 'objects'>('fields');
 
   const primarySerial = serials[0] ?? null;
 
@@ -84,17 +87,22 @@ export default function App() {
     };
   }, [primarySerial, reloadToken]);
 
-  // Snapshot written back by the playbook. Absent is normal, so no error state.
+  // Snapshot from the playbook, plus any manual edits made in this panel.
+  // Both absent is normal, so neither produces an error state.
   useEffect(() => {
     let cancelled = false;
 
     if (!front.conversationId) {
       setSnapshot(null);
+      setEdits({});
       return;
     }
 
     fetchSnapshot(front.conversationId).then((result) => {
       if (!cancelled) setSnapshot(result);
+    });
+    fetchEdits(front.conversationId).then((result) => {
+      if (!cancelled) setEdits(result);
     });
 
     return () => {
@@ -103,6 +111,38 @@ export default function App() {
   }, [front.conversationId, reloadToken]);
 
   const refresh = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  /**
+   * Save one edited field. The value lands locally regardless; `front` reports
+   * whether it also reached Front's own custom fields, which only works for
+   * fields that exist in the workspace.
+   */
+  const saveField = useCallback(
+    async (name: string, value: unknown) => {
+      if (!front.conversationId) throw new Error('No conversation to save against.');
+
+      const response = await saveFieldEdit(front.conversationId, name, value);
+      setEdits(response.fields);
+
+      const failure = response.front.failed[0];
+      if (failure) {
+        setWriteNotice(`Not written to Front — ${failure.reason}`);
+        throw new Error(failure.reason);
+      }
+      if (!response.front.attempted) {
+        setWriteNotice(response.front.error ?? 'Saved in the panel only.');
+        return;
+      }
+      setWriteNotice(null);
+    },
+    [front.conversationId],
+  );
+
+  const relatedCount = useMemo(() => {
+    if (!machine) return 0;
+    const o = machine.associated_objects;
+    return o.work_orders.length + o.spare_parts.length + o.quotes.length + (o.service_contract ? 1 : 0);
+  }, [machine]);
 
   const subtitle = useMemo(() => {
     if (front.kind === 'dev') return 'Demo mode — not running inside Front';
@@ -178,20 +218,26 @@ export default function App() {
           </button>
         </div>
 
-        <div className="segmented" role="group" aria-label="Ticket type">
-          {(Object.keys(FIELD_SETS) as FieldSetId[]).map((id) => (
-            <button
-              key={id}
-              aria-pressed={fieldSetId === id}
-              onClick={() => setOverrideSetId(id)}
-            >
-              {FIELD_SETS[id].label}
-              {autoDetected && fieldSetId === id ? ' ·auto' : ''}
-            </button>
-          ))}
+        <div className="input-row" style={{ marginTop: 8 }}>
+          <label className="inline-label" htmlFor="ticket-type">
+            Ticket type
+          </label>
+          <select
+            id="ticket-type"
+            className="input"
+            value={fieldSetId}
+            onChange={(e) => setOverrideSetId(e.target.value as FieldSetId)}
+          >
+            {(Object.keys(FIELD_SETS) as FieldSetId[]).map((id) => (
+              <option key={id} value={id}>
+                {FIELD_SETS[id].label}
+                {autoDetected && detectFieldSet(front.inboxes) === id ? ' (from inbox)' : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="input-row" style={{ marginTop: 8 }}>
+        <div className="input-row" style={{ marginTop: 6 }}>
           <input
             className="input"
             placeholder="Serial number, e.g. 560020728"
@@ -227,6 +273,26 @@ export default function App() {
             )}
           </div>
         )}
+
+        <div className="tabs" role="tablist">
+          <button
+            className="tab"
+            role="tab"
+            aria-selected={tab === 'fields'}
+            onClick={() => setTab('fields')}
+          >
+            Ticket fields
+          </button>
+          <button
+            className="tab"
+            role="tab"
+            aria-selected={tab === 'objects'}
+            onClick={() => setTab('objects')}
+          >
+            Related objects
+            {relatedCount > 0 && <span className="tab-count">{relatedCount}</span>}
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -262,16 +328,35 @@ export default function App() {
 
       {loading && primarySerial && <Skeleton />}
 
-      {!loading && !error && (
+      {!loading && !error && tab === 'fields' && (
         <>
+          {writeNotice && (
+            <div className="section" style={{ paddingBottom: 0, borderBottom: 0 }}>
+              <div className="notice notice-warn">{writeNotice}</div>
+            </div>
+          )}
           <TicketFields
             fieldSet={fieldSet}
             customFields={front.customFields}
             snapshotFields={snapshot?.fields ?? null}
+            editedFields={edits}
+            onSave={saveField}
+            conversationId={front.conversationId}
           />
-          {machine && <AssociatedObjects machine={machine} context={front.context} />}
         </>
       )}
+
+      {!loading && !error && tab === 'objects' &&
+        (machine ? (
+          <AssociatedObjects machine={machine} context={front.context} />
+        ) : (
+          <div className="state">
+            <div className="state-title">No machine loaded</div>
+            <div className="state-body">
+              Enter or detect a serial number to see its work orders, parts and quotes.
+            </div>
+          </div>
+        ))}
     </div>
   );
 }

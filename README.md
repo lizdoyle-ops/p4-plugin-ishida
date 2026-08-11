@@ -181,6 +181,34 @@ What the plugin reads to show **AI-filled** values. **404** when nothing has bee
 curl -s -H "X-Api-Key: $API_KEY" $BACKEND/api/tickets/cnv_demo/snapshot
 ```
 
+### `PATCH /api/tickets/:conversationId/fields`
+
+A manual edit from the panel. Stores the value, then tries to write it through to Front.
+Send `null` to clear a field.
+
+```bash
+curl -s -X PATCH -H "X-Api-Key: $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"fields":{"Request Type":"warranty","Warranty Active?":true}}' \
+  $BACKEND/api/tickets/cnv_hovrcwd/fields
+```
+
+```json
+{
+  "conversation_id": "cnv_hovrcwd",
+  "fields": { "Request Type": "warranty", "Warranty Active?": true },
+  "updated_at": "2026-08-11T10:31:02.884Z",
+  "front": { "attempted": true, "written": ["Request Type", "Warranty Active?"], "failed": [] }
+}
+```
+
+Storing always succeeds; `front` reports separately what reached Front. A field that does
+not exist there comes back under `failed` with
+`"Custom field not found: '...'"` while the value stays saved locally.
+
+### `GET /api/tickets/:conversationId/fields`
+
+Manual edits for a conversation. Returns an empty map rather than 404.
+
 ### `billing_status`
 
 Derived, and the thing the playbook branches on:
@@ -250,43 +278,69 @@ The panel picks a field set from the conversation's inbox:
 
 These IDs are in [`plugin/src/fieldSets.ts`](plugin/src/fieldSets.ts) under
 `INBOX_FIELD_SETS`. Anything else falls back to name matching, then to Tech Support. The
-segmented toggle in the panel header always overrides — so you can force the right set
-live if a conversation is in an unexpected inbox.
+**Ticket type** dropdown in the panel header always overrides — so you can force the right
+set live if a conversation is in an unexpected inbox.
 
-### Custom fields — you need to create these
+### Custom fields — the six that matter already exist
 
-> **Checked against the demo instance: none of these exist yet.** There are 214 custom
-> fields and none of them are Ishida's. Front's API has no route for creating them
-> (`POST /custom_fields` returns *"No such route"*), so this is a Settings task:
-> **Settings → Company → Custom fields → conversation fields.**
+Front keeps **conversation** and **contact** custom fields in separate scopes, and they
+are listed by different endpoints. Conversation fields are the ones a playbook writes to:
 
-The panel renders every field regardless, showing `—` for anything unset, so it stays
-legible before you create them. But the playbook cannot **write** to a field that does
-not exist.
+```bash
+curl -s -H "Authorization: Bearer $FRONT_API_TOKEN" \
+  'https://api2.frontapp.com/conversations/custom_fields?limit=100'
+```
 
-**Minimum for the automation half (6 fields):**
+Checked against the demo instance (178 conversation fields), these **already exist** and
+need no setup:
 
 | Name | Type |
 |---|---|
-| `Serial Number(s)` | Text |
-| `Machine(s)` | Text |
-| `Country` | Text |
-| `Service Contract` | Text |
-| `Warranty Active?` | Boolean |
-| `Request Type` | Text or Enum (`warranty`, `contract`, `chargeable`) |
+| `Serial Number(s)` | string |
+| `Machine(s)` | string |
+| `Country` | string |
+| `Service Contract` | string |
+| `Warranty Active?` | boolean |
+| `Request Type` | string |
+| `Solution` | string |
 
-**Complaints set (adds 11):** `Complaint Category`, `Complaint Type`, `Complaint Status`,
-`Commercial Impact`, `Which department(s)`, `Next Update` (date), `LN Reference`,
-`Problem Statement`, `Proposed Solution`, `Latest Update`, `Final Resolution`.
+That covers the whole automation path, so the playbook can be built without touching
+Settings.
 
-**Tech Support set (adds 11):** `Date of SightCall Intervention` (date),
-`SightCall Completed` (boolean), `Did SightCall Resolve the ticket?` (boolean),
-`Reason SightCall did not resolve`, `Machine Breakdown?` (boolean),
-`Callback Required` (boolean), `No. of Engineer Visits` (number), `Total time spent`,
-`Time spent last update`, `Issue`, `Solution`.
+**Still missing**, if you want the full field list to populate rather than just display:
+`Complaint Category`, `Complaint Type`, `Complaint Status`, `Commercial Impact`,
+`Problem Statement`, `Proposed Solution`, `Latest Update`, `Final Resolution`,
+`Date of SightCall Intervention` (date), `SightCall Completed` (boolean),
+`Did SightCall Resolve the ticket?` (boolean), `Reason SightCall did not resolve`,
+`Machine Breakdown?` (boolean), `Callback Required` (boolean),
+`No. of Engineer Visits` (number), `Total time spent`, `Time spent last update`, `Issue`.
+
+Front's API has no route to create them (`POST` returns *"No such route"*), so that is a
+Settings task: **Settings → Company → Custom fields**. The panel renders every field
+regardless, showing `—` for anything unset, and manual edits still save locally — they
+just will not appear in Front's own field UI until the field exists.
 
 Names must match `frontName` in `plugin/src/fieldSets.ts` **exactly** — that string is
 how values are looked up. If you name a field differently in Front, change it there too.
+
+### Editing fields from the panel
+
+Every field row is editable: click the value, type, press Enter or click away. Escape
+cancels. Booleans get a Yes/No dropdown, dates a date picker, numbers a number input, and
+the long free-text fields a textarea.
+
+Saving does two things. The edit is stored in the backend, which always succeeds and is
+what puts the value on screen with an **Edited** badge. Then the backend tries to write it
+through to Front's own custom field via
+`PATCH /conversations/:id { custom_fields: { ... } }`. If that fails — usually because the
+field does not exist yet — the value still shows, tagged *not a Front field yet*, and the
+reason appears in a banner at the top.
+
+> The write-through runs **server-side on purpose**. A Front API token can read every
+> conversation in the company and send messages as your team, so it must never ship in the
+> browser bundle the way the demo API key does. Set `FRONT_API_TOKEN` in the backend's
+> environment (Render → Environment) to enable it. Leave it unset and edits simply stay
+> local to the panel — everything else still works.
 
 ### Registering the plugin
 
@@ -352,7 +406,7 @@ blocked as mixed content.
 | `SEED_CSV_PATH` | backend | Override CSV location. |
 | `VITE_BACKEND_URL` | plugin | Backend base URL, default `http://localhost:4000`. |
 | `VITE_API_KEY` | plugin | Sent as `X-Api-Key`. **Inlined into the bundle** — see below. |
-| `FRONT_API_TOKEN` | scripts only | Front API token. Never read at runtime. |
+| `FRONT_API_TOKEN` | backend | Enables writing panel edits through to Front's custom fields. Optional — unset means edits stay local. Server-side only, never sent to the browser. |
 
 ---
 
@@ -399,10 +453,12 @@ Rotate `API_KEY` after the demo.
 
 ## Known limits
 
-- **The plugin cannot write Front custom fields.** The SDK exposes
-  `conversation.customFieldAttributes` as read-only; there is no setter. Writing is the
-  playbook's job via Front's REST API. That is precisely why the snapshot round-trip
-  exists — it is the only way the panel can display AI-populated values.
+- **The plugin SDK cannot write Front custom fields.** `conversation.customFieldAttributes`
+  is read-only with no setter. Both the playbook's writes and the panel's manual edits go
+  through Front's REST API instead — the playbook directly, the panel via this backend so
+  the token stays server-side. That constraint is also why the snapshot round-trip exists:
+  it is the only way the panel can display AI-populated values for fields that do not
+  exist in Front yet.
 - Only the **first** detected serial drives the panel. Multi-serial tickets show a count
   in the header and the batch endpoint supports them, but the panel renders one machine.
 - Associated objects are generated, not stored — deterministically seeded from the serial,
