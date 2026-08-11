@@ -1,0 +1,22 @@
+# Render blueprint for the ERP replica backend.
+# Deploy: push to a repo, then Render → New → Blueprint → point at this file.
+services:
+  - type: web
+    name: p4-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    # Context is the repo root so the Dockerfile can COPY data/.
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      # Set in the Render dashboard — the plugin and the Front playbook must
+      # send this same value as X-Api-Key.
+      - key: API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+
+# Note: the free plan has an ephemeral filesystem and sleeps when idle.
+# Machines reseed from data/*.csv on every boot, but ticket snapshots are lost
+# on restart. Fine for a demo; add a paid persistent disk if you need them kept.

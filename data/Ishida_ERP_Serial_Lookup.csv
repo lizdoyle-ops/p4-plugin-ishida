@@ -1,0 +1,9 @@
+serial_number,model_code,machine_type,customer_account,country,install_date,warranty_active,warranty_expiry,service_contract,ln_reference,region_inbox,key_account
+560020450,CCW-RVE-224W,CCW,Divertec,Portugal,2025-06-12,true,2027-06-12,Service 365,470002988,Aftersales EU-South,
+560020728,IX-EN-2463,X-RAY,Sanchez-Cano,Spain,2025-02-03,true,2027-02-03,Service 365 Ultimate (X-Ray),470003011,Aftersales EU-South,
+560020727,DACS-G-015-SE,DACS,Sanchez-Cano,Spain,2025-02-03,true,2027-02-03,Service 365 Ultimate,470003010,Aftersales EU-South,
+560018221,ATLAS-RS-4000,Bagmaker,Intersnack Poland,Poland,2019-04-18,false,2021-04-18,None,470001772,Aftersales EU-Central,Intersnack Group
+560019430,QX-1100-FLEX,Traysealer,Bakkavor,United Kingdom,2022-09-30,false,2024-09-30,Service 365,470002145,Aftersales UK&I,Bakkavor
+560020102,DACS-W-012-SE,CHECKWEIGHER,Fleury Michon,France,2024-11-15,true,2026-11-15,None,470002731,Aftersales EU-West,
+560019876,CCW-AS-214W,CCW,Zwanenberg Food Group,Netherlands,2023-03-22,false,2025-03-22,Service 365 Ultimate,470002501,Aftersales EU-West,Zwanenberg
+560020615,IX-GA-4075,X-RAY,Citterio,Italy,2025-01-20,true,2027-01-20,Service 365,470002950,Aftersales EU-South,
